@@ -39,7 +39,6 @@ DF::DF() {
     this->YBase = -1;
     this->YLimit = 1;
     this->generation = 0;
-    std::srand(time(NULL)); // TODO: use AEON random?
 }
 
 DF::~DF() {
@@ -100,7 +99,8 @@ bool DF::isDynamic() {
     return true;
 }
 
-bool DF::init(unsigned int, const std::string&, const std::string&) {
+bool DF::init(unsigned int seed, const std::string&, const std::string&) {
+    std::srand(seed); // TODO: use AEON random?
     // TODO: check that N, global_optimas, dynamic_peaks agree
     unsigned int i;
     Json::Value rootNode;
