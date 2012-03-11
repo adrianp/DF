@@ -95,8 +95,11 @@ void DF::getParameters(std::vector<std::string>& parameters) {
 }
 
 bool DF::isDynamic() {
-    // TODO: if dynamic_peaks == 0 not dynamic
-    return true;
+    if(this->dynamic_peaks > 0) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool DF::init(unsigned int seed, const std::string&, const std::string&) {
@@ -408,7 +411,7 @@ double DF::getFirstChanged() {
 
 void DF::reportLandscape(int time) {
     std::stringstream s;
-    s << "landscape/evaluation" << time;
+    s << "landscape/evaluation" << time << ".csv";
     std::ofstream file;
     file.open(s.str().c_str());
     for(double i=-1; i<=1; i+=0.01) {
@@ -416,7 +419,7 @@ void DF::reportLandscape(int time) {
             std::vector<double> v;
             v.push_back(i);
             v.push_back(j);
-            file << i << " " << j << " " << this->evaluateFunction(v) 
+            file << i << "," << j << "," << this->evaluateFunction(v) 
                     << std::endl;
         }
     }
