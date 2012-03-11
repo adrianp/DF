@@ -28,7 +28,7 @@
 // Dynamic experiment includes
 #include "DF.h"
 #include "dynamic_helpers.h"
-#include "random_helper.h" // TODO: use AEON random?
+#include "random_helper.h" // TODO: use AEON random
 
 using namespace aeon;
 using namespace boost::assign; // used for vector += element1, element2;
@@ -103,8 +103,7 @@ bool DF::isDynamic() {
 }
 
 bool DF::init(unsigned int seed, const std::string&, const std::string&) {
-    std::srand(seed); // TODO: use AEON random?
-    // TODO: check that N, global_optimas, dynamic_peaks agree
+    std::srand(seed); // TODO: use AEON random
     unsigned int i;
     Json::Value rootNode;
     std::string value;
@@ -238,7 +237,13 @@ bool DF::init(unsigned int seed, const std::string&, const std::string&) {
         }
     }
 
-    this->nParams_ = 2; // TODO: check this
+    // TODO: make the experiment work in more than 2 dimensions
+    this->nParams_ = 2;
+        
+    if(this->local_optimas > this->N || this->dynamic_peaks > this->N) {
+        std::cout << "N, global_optimas, dynamic_peaks must agree" << std::endl;
+        return false;
+    }
     
     if(this->dynamic_peaks > 0) {
         for(i=0; i < this->dynamic_peaks; ++i) {
@@ -353,24 +358,24 @@ void DF::dynamic_rotation() {
 }
 
 void DF::dynamic_scaling() {
-    // TODO: scale all the peaks?
+    // TODO: scale ALL the peaks
 }
 
 void DF::dynamic_local_optima() {
-    // TODO: changes to local optimas, global remain the same
+    // TODO: changes to local optimas, globals remain the same
 }
 
 void DF::dynamic_elevate_optima() {
     // TODO: local optimas become global optimas
 }
 void DF::dynamic_global_optima() {
-    // TODO: changes to global optimas, global remain the same
+    // TODO: changes to global optimas, globals remain the same
 }
 void DF::dynamic_downgrade_optima() {
     // TODO: global optimas become local optimas
 }
 
-// TODO: adapt for more than 2 dimensions
+// TODO: make the experiment work in more than 2 dimensions
 double DF::evaluateFunction(const std::vector<double>& x) {
     double res = -std::numeric_limits<double>::max();
     for (unsigned int i = 0; i < N; i++) {
