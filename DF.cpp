@@ -51,9 +51,12 @@ void DF::evaluate(std::vector<boost::shared_ptr
 }
 
 bool DF::getResults(std::vector<boost::shared_ptr<const Result> >& results) {
-   results.push_back(boost::shared_ptr<const aeon::Result>(
+    // TODO: hack for ResultData compliance
+    std::vector<double> v;
+    v += this->result_;
+    results.push_back(boost::shared_ptr<const aeon::Result>(
            new aeon::Result(boost::shared_ptr<const aeon::ResultData>(
-                   new aeon::ResultData(this->result_)))));
+                   new aeon::ResultData(this->result_, v)))));
    return true;
 }
 
@@ -124,7 +127,7 @@ bool DF::init(unsigned int seed, const std::string&, const std::string&) {
                         << std::endl;
             return false;
         } else {
-            this->local_optimas = rootNode["local_otpimas"].asInt();
+            this->local_optimas = rootNode["local_optimas"].asInt();
         }
         if(!rootNode["HBase"]) {
             std::cout << "Value for HBase could not be parsed." << std::endl;
@@ -262,8 +265,8 @@ bool DF::init(unsigned int seed, const std::string&, const std::string&) {
   //double globalOpt = random_double(this->HBase, this->HLimit);
   double globalOpt = this->HLimit;
 
-  for(i = 0; i < N; ++i) {
-      if(i < N - local_optimas)
+  for(i = 0; i < this->N; ++i) {
+      if(i < this->N - this->local_optimas)
       {
           this->H.push_back(globalOpt);
       }
@@ -376,10 +379,11 @@ void DF::dynamic_downgrade_optima() {
 }
 
 // TODO: make the experiment work in more than 2 dimensions
-double DF::evaluateFunction(const std::vector<double>& x) {
-    double res = -std::numeric_limits<double>::max();
-    for (unsigned int i = 0; i < N; i++) {
-        double form = ((x[0]-X[i])*(x[0]-X[i])+(x[1]-Y[i])*(x[1]-Y[i]));
+double DF::evaluateFunction(const std::vector<double>& v) {
+    //double res = -std::numeric_limits<double>::max();
+    double res = 0; // this will force the landscape to have a flat "bottom"
+    for (unsigned int i = 0; i < this->N; ++i) {
+        double form = ((v[0]-this->X[i])*(v[0]-this->X[i])+(v[1]-this->Y[i])*(v[1]-this->Y[i]));
         if(this->cones) {
             form = sqrt(form);
         }
@@ -416,7 +420,9 @@ double DF::getFirstChanged() {
 
 void DF::reportLandscape(int time) {
     std::stringstream s;
-    s << "landscape/evaluation" << time << ".csv";
+    // TODO: easy config of output format
+    //s << "landscape/evaluation" << time << ".csv";
+    s << "landscape/evaluation" << time;
     std::ofstream file;
     file.open(s.str().c_str());
     for(double i=-1; i<=1; i+=0.01) {
@@ -424,8 +430,8 @@ void DF::reportLandscape(int time) {
             std::vector<double> v;
             v.push_back(i);
             v.push_back(j);
-            file << i << "," << j << "," << this->evaluateFunction(v) 
-                    << std::endl;
+            //file << i << "," << j << "," << this->evaluateFunction(v) << std::endl;
+            file << i << " " << j << " " << this->evaluateFunction(v) << std::endl;
         }
     }
     file.close();
