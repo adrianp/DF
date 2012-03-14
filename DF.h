@@ -70,6 +70,9 @@ class DF : public virtual aeon::IParametricExperiment {
 
         std::string dynamic_type; // the type of dynamic transformation
         bool debug; // true for outputting the landscape
+        
+        // the frequency of the change
+        int frequency;
 
         // variables used by the AEON framework
         double result_;

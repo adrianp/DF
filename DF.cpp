@@ -61,7 +61,9 @@ bool DF::getResults(std::vector<boost::shared_ptr<const Result> >& results) {
 }
 
 void DF::setup(int evolutionaryTime, aeon::EvolutionaryTimeType::Value, int) {
-    if(evolutionaryTime > this->generation && this->dynamic_peaks > 0) {
+    if(evolutionaryTime > this->generation && 
+       this->dynamic_peaks > 0 && 
+       evolutionaryTime % this->frequency == 0) {
         if(this->dynamic_type == "rotation") {
             this->dynamic_rotation();
         } else if (this->dynamic_type == "scaling") {
@@ -237,6 +239,12 @@ bool DF::init(unsigned int seed, const std::string&, const std::string&) {
                                 << std::endl;
                 return false;
             }
+        }
+        if(!rootNode["frequency"]) {
+            std::cout << "Value for frequency could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->frequency = rootNode["frequency"].asInt();
         }
     }
 
