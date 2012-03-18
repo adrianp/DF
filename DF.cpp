@@ -32,6 +32,7 @@
 
 using namespace aeon;
 using namespace boost::assign; // used for vector += element1, element2;
+using namespace std;
 
 DF::DF() {
     this->XBase = -1;
@@ -42,7 +43,7 @@ DF::DF() {
 }
 
 DF::~DF() {
-    // TODO: do we need to do something here?
+    stats_file.close();
 }
 
 void DF::evaluate(std::vector<boost::shared_ptr
@@ -57,45 +58,59 @@ bool DF::getResults(std::vector<boost::shared_ptr<const Result> >& results) {
     results.push_back(boost::shared_ptr<const aeon::Result>(
            new aeon::Result(boost::shared_ptr<const aeon::ResultData>(
                    new aeon::ResultData(this->result_, v)))));
-   return true;
+    return true;
 }
 
 void DF::setup(int evolutionaryTime, aeon::EvolutionaryTimeType::Value, int) {
-    if(evolutionaryTime > this->generation && 
-       this->dynamic_peaks > 0 && 
-       evolutionaryTime % this->frequency == 0) {
-        if(this->dynamic_type == "rotation") {
-            this->dynamic_rotation();
-        } else if (this->dynamic_type == "scaling") {
-            this->dynamic_scaling();
-        } else if (this->dynamic_type == "local_optima") {
-            this->dynamic_local_optima();
-        } else if (this->dynamic_type == "elevate_optima") {
-            this->dynamic_elevate_optima();
-        } else if (this->dynamic_type == "global_optima") {
-            this->dynamic_global_optima();
-        } else if (this->dynamic_type == "downgrade_optima") {
-            this->dynamic_downgrade_optima();
-        } else if (this->dynamic_type == "heights") {
-            this->changeHeights();
-        } else if (this->dynamic_type == "slopes") {
-            this->changeSlopes();
-        } else if (this->dynamic_type == "x") {
-            this->changeX();
-        } else if (this->dynamic_type == "y") {
-            this->changeY();
+    if(evolutionaryTime > this->generation) { 
+        if(this->dynamic_peaks > 0 && evolutionaryTime % this->frequency == 0) {
+            if(this->dynamic_type == "slow_rotation") {
+                this->slow_rotation();
+            } else if (this->dynamic_type == "fast_rotation") {
+                this->fast_rotation();
+            } else if (this->dynamic_type == "hybrid_rotation") {
+                this->hybrid_rotation();
+            } else if (this->dynamic_type == "scaling") {
+                this->dynamic_scaling();
+            } else if (this->dynamic_type == "local_optima") {
+                this->dynamic_local_optima();
+            } else if (this->dynamic_type == "elevate_optima") {
+                this->dynamic_elevate_optima();
+            } else if (this->dynamic_type == "global_optima") {
+                this->dynamic_global_optima();
+            } else if (this->dynamic_type == "downgrade_optima") {
+                this->dynamic_downgrade_optima();
+            }
+            
+            if(this->debug) {
+                this->reportLandscape(evolutionaryTime); // this will make things slow 
+            }
         }
-        if(this->debug) {
-            // this will make things slow
-            this->reportLandscape(evolutionaryTime); 
-        }
+        
+        this->report_statistics();
+        this->solutions_on_peaks = 0;
+        this->pop_size = 0;
         this->generation = evolutionaryTime;
+        this->best = this->bottom;
+        for(unsigned int i = 0; i < this->N - this->local_optimas; ++i) {
+            this->covered_peaks[i] = false;
+        }
     }
+}
+
+void DF::report_statistics() {
+    int aux = 0;
+    for(unsigned int i = 0; i < this->N - this->local_optimas; ++i) {
+        if(this->covered_peaks[i]) {
+            aux += 1;
+        }
+    }
+    stats_file << this->generation << "\t" << this->HLimit << "\t" << this->bottom << "\t" << this->frequency << "\t" << this->solutions_on_peaks << "\t" << this->pop_size << "\t" << aux << "\t" << (this->N - this->local_optimas) << std::endl;
 }
 
 void DF::getParameters(std::vector<std::string>& parameters) {
     for (unsigned int i = 0; i < this->nParams_; ++i) {
-       parameters.push_back("x" + i);
+        parameters.push_back("x" + i);
     }
 }
 
@@ -107,8 +122,7 @@ bool DF::isDynamic() {
     }
 }
 
-bool DF::init(unsigned int seed, const std::string&, const std::string&) {
-    std::srand(seed); // TODO: use AEON random
+bool DF::init(unsigned int, const std::string&, const std::string&) {
     unsigned int i;
     Json::Value rootNode;
     std::string value;
@@ -168,53 +182,101 @@ bool DF::init(unsigned int seed, const std::string&, const std::string&) {
         } else {
             this->cones = rootNode["cones"].asBool();
         }
-        if(!rootNode["Ah"]) {
-            std::cout << "Value for Ah could not be parsed." << std::endl;
+        if(!rootNode["Ah_slow"]) {
+            std::cout << "Value for Ah_slow could not be parsed." << std::endl;
             return false;
         } else {
-            this->Ah = rootNode["Ah"].asDouble();
+            this->Ah_slow = rootNode["Ah_slow"].asDouble();
         }
-        if(!rootNode["Ar"]) {
-            std::cout << "Value for Ar could not be parsed." << std::endl;
+        if(!rootNode["Ah_fast"]) {
+            std::cout << "Value for Ah_fast could not be parsed." << std::endl;
             return false;
         } else {
-            this->Ar = rootNode["Ar"].asDouble();
+            this->Ah_fast = rootNode["Ah_fast"].asDouble();
         }
-        if(!rootNode["Ax"]) {
-            std::cout << "Value for Ax could not be parsed." << std::endl;
+        if(!rootNode["Ar_slow"]) {
+            std::cout << "Value for Ar_slow could not be parsed." << std::endl;
             return false;
         } else {
-            this->Ax = rootNode["Ax"].asDouble();
+            this->Ar_slow = rootNode["Ar_slow"].asDouble();
         }
-        if(!rootNode["Ay"]) {
-            std::cout << "Value for Ay could not be parsed." << std::endl;
+        if(!rootNode["Ar_fast"]) {
+            std::cout << "Value for Ar_fast could not be parsed." << std::endl;
             return false;
         } else {
-            this->Ay = rootNode["Ay"].asDouble();
+            this->Ar_fast = rootNode["Ar_fast"].asDouble();
         }
-        if(!rootNode["scaleH"]) {
-            std::cout << "Value for scaleH could not be parsed." << std::endl;
+        if(!rootNode["Ax_slow"]) {
+            std::cout << "Value for Ax_slow could not be parsed." << std::endl;
             return false;
         } else {
-            this->scaleH = rootNode["scaleH"].asDouble();
+            this->Ax_slow = rootNode["Ax_slow"].asDouble();
         }
-        if(!rootNode["scaleR"]) {
-            std::cout << "Value for scaleR could not be parsed." << std::endl;
+        if(!rootNode["Ax_fast"]) {
+            std::cout << "Value for Ax_fast could not be parsed." << std::endl;
             return false;
         } else {
-            this->scaleR = rootNode["scaleR"].asDouble();
+            this->Ax_fast = rootNode["Ax_fast"].asDouble();
         }
-        if(!rootNode["scaleX"]) {
-            std::cout << "Value for scaleX could not be parsed." << std::endl;
+        if(!rootNode["Ay_slow"]) {
+            std::cout << "Value for Ay_slow could not be parsed." << std::endl;
             return false;
         } else {
-            this->scaleX = rootNode["scaleX"].asDouble();
+            this->Ay_slow = rootNode["Ay_slow"].asDouble();
         }
-        if(!rootNode["scaleY"]) {
-            std::cout << "Value for scaleY could not be parsed." << std::endl;
+        if(!rootNode["Ay_fast"]) {
+            std::cout << "Value for Ay_fast could not be parsed." << std::endl;
             return false;
         } else {
-            this->scaleY = rootNode["scaleY"].asDouble();
+            this->Ay_fast = rootNode["Ay_fast"].asDouble();
+        }
+        if(!rootNode["scaleH_slow"]) {
+            std::cout << "Value for scaleH_slow could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleH_slow = rootNode["scaleH_slow"].asDouble();
+        }
+        if(!rootNode["scaleH_fast"]) {
+            std::cout << "Value for scaleH_fast could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleH_fast = rootNode["scaleH_fast"].asDouble();
+        }
+        if(!rootNode["scaleR_slow"]) {
+            std::cout << "Value for scaleR_slow could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleR_slow = rootNode["scaleR_slow"].asDouble();
+        }
+        if(!rootNode["scaleR_fast"]) {
+            std::cout << "Value for scaleR_fast could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleR_fast = rootNode["scaleR_fast"].asDouble();
+        }
+        if(!rootNode["scaleX_slow"]) {
+            std::cout << "Value for scaleX_slow could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleX_slow = rootNode["scaleX_slow"].asDouble();
+        }
+        if(!rootNode["scaleX_fast"]) {
+            std::cout << "Value for scaleX_fast could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleX_fast = rootNode["scaleX_fast"].asDouble();
+        }
+        if(!rootNode["scaleY_slow"]) {
+            std::cout << "Value for scaleY_slow could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleY_slow = rootNode["scaleY_slow"].asDouble();
+        }
+        if(!rootNode["scaleY_fast"]) {
+            std::cout << "Value for scaleY_fast could not be parsed." << std::endl;
+            return false;
+        } else {
+            this->scaleY_fast = rootNode["scaleY_fast"].asDouble();
         }
         if(!rootNode["debug"]) {
             std::cout << "Value for debug could not be parsed." << std::endl;
@@ -228,9 +290,10 @@ bool DF::init(unsigned int seed, const std::string&, const std::string&) {
             return false;
         } else {
             std::vector<std::string> dynamic_types;
-            dynamic_types += "rotation", "scaling", "local_optima", 
+            dynamic_types += "slow_rotation", "fast_rotation",  "hybrid_rotation",
+                             "scaling", "local_optima", 
                              "elevate_optima", "global_optima", 
-                             "downgrade_optima", "heights", "slopes", "x", "y";
+                             "downgrade_optima";
             if (std::find(dynamic_types.begin(), dynamic_types.end(), 
                     rootNode["dynamic_type"].asString())!=dynamic_types.end()) {
                 this->dynamic_type = rootNode["dynamic_type"].asString();
@@ -246,76 +309,120 @@ bool DF::init(unsigned int seed, const std::string&, const std::string&) {
         } else {
             this->frequency = rootNode["frequency"].asInt();
         }
+        if(!rootNode["seed"]) {
+            std::cout << "Value for seed could not be parsed." << std::endl;
+            return false;
+        } else {
+            std::srand(rootNode["seed"].asInt()); // TODO: use AEON random
+        }
     }
-
+    
     // TODO: make the experiment work in more than 2 dimensions
     this->nParams_ = 2;
         
     if(this->local_optimas > this->N || this->dynamic_peaks > this->N) {
-        std::cout << "N, global_optimas, dynamic_peaks must agree" << std::endl;
+        std::cout << "BENCHMARK ERROR: N, local_optimas, dynamic_peaks must agree" << std::endl;
         return false;
     }
+
+    double globalOpt = this->HLimit;
+
+    for(i = 0; i < this->N; ++i) {
+        if(i < this->N - this->local_optimas) {
+            this->H.push_back(globalOpt);
+            this->covered_peaks.push_back(false);
+        }
+        else {
+            this->H.push_back(random_double_exclusive(this->HBase, globalOpt));
+        }
+        this->R.push_back(random_double(this->RBase, this->RLimit));
+        this->X.push_back(random_double(this->XBase,this->XLimit));
+        this->Y.push_back(random_double(this->YBase,this->YLimit));
+    }
     
-    if(this->dynamic_peaks > 0) {
-        for(i=0; i < this->dynamic_peaks; ++i) {
-            this->peaks_to_change.push_back(i);
-            this->Yheight.push_back(0.1);
-            this->Yslope.push_back(0.1);
-            this->Yx.push_back(0.1);
-            this->Yy.push_back(0.1);
+    // in hybrid rotation half of the peaks will move slowly and half fast
+    if(this->dynamic_type == "hybrid_rotation") {
+        for(i = 0; i < this->N; ++i) {
+            if(i % 2 == 0) {
+                this->fast_peaks_to_change.push_back(i);
+            } else {
+                this->slow_peaks_to_change.push_back(i);
+            }
+            
+            // we use 0.45 as the starting Y value for the logistics function
+            this->Yheight.push_back(0.45);
+            this->Yslope.push_back(0.45);
+            this->Yx.push_back(0.45);
+            this->Yy.push_back(0.45);
+            
             this->Hflag.push_back(1);
             this->Rflag.push_back(1);
             this->Xflag.push_back(1);
             this->Yflag.push_back(1);
         }
+    } else {
+        if(this->dynamic_peaks > 0) {
+            for(i=0; i < this->dynamic_peaks; ++i) {
+                this->peaks_to_change.push_back(i);
+                this->Yheight.push_back(0.45);
+                this->Yslope.push_back(0.45);
+                this->Yx.push_back(0.45);
+                this->Yy.push_back(0.45);
+                this->Hflag.push_back(1);
+                this->Rflag.push_back(1);
+                this->Xflag.push_back(1);
+                this->Yflag.push_back(1);
+            }
+        }
     }
+  
+    this->bottom = 0;
+    this->pop_size = 0;
+    this->best = this->bottom;
+    this->solutions_on_peaks = 0;
+    stats_file.open("statistics/benchmark.txt");
+    stats_file << "GENERATION" << "\t" << "MAX" << "\t" << "MIN" << "\t" << "FREQUENCY" << "\t" << "SOLS_ON_PEAKS" << "\t" << "SOLS" << "\t" << "COVERED_PEAKS" << "\t" << "PEAKS" << std::endl;
 
-  //double globalOpt = random_double(this->HBase, this->HLimit);
-  double globalOpt = this->HLimit;
-
-  for(i = 0; i < this->N; ++i) {
-      if(i < this->N - this->local_optimas)
-      {
-          this->H.push_back(globalOpt);
-      }
-      else
-      {
-          this->H.push_back(random_double_exclusive(this->HBase, globalOpt));
-      }
-      this->R.push_back(random_double(this->RBase, this->RLimit));
-      this->X.push_back(random_double(this->XBase,this->XLimit));
-      this->Y.push_back(random_double(this->YBase,this->YLimit));
-  }
-
-  return true; // initialization successful 
+    if(this->debug) {
+        this->reportLandscape(0);
+    }
+    
+    return true; // initialization successful 
 }
 
-void DF::changeHeights() {
+void DF::changeHeights(double A, double scale) {
     for(unsigned int i = 0; i < this->dynamic_peaks; ++i) {
+        // first we calculate the change to be applied
         double s = waveStep(this->H[this->peaks_to_change[i]],
                             this->HBase,
                             this->HLimit,
                             this->Yheight[i],
-                            this->scaleH);
+                            scale);
 
+        // we verify that the peak won't go out of bounds
         if(H[peaks_to_change[i]] + s*this->Hflag[i] > this->HLimit ||
            H[peaks_to_change[i]] + s*this->Hflag[i] < this->HBase) {
             this->Hflag[i] *= -1;
         }
+        
+        //The flag will remain the same until the next time the peak goes out of bounds
+        
+        // we apply the change
         H[peaks_to_change[i]] += this->Hflag[i]*s;
-        this->Yheight[i] = logisticsFunction(this->Ah, this->Yheight[i]);
+        
+        // we calculate the new value of Y using the logistics function
+        this->Yheight[i] = logisticsFunction(A, this->Yheight[i]);
     }
 }
 
 // TODO: investigate height changes
-void DF::changeSlopes() {
-    for(unsigned int i = 0; i < this->dynamic_peaks; ++i)
-    {
+void DF::changeSlopes(double A, double scale) {
+    for(unsigned int i = 0; i < this->dynamic_peaks; ++i) {
         double s = waveStep(this->R[this->peaks_to_change[i]],
                             this->RBase,
                             this->RLimit,
                             this->Yslope[i],
-                            this->scaleR);
+                            scale);
 
         if(R[peaks_to_change[i]] + s*this->Rflag[i] > this->RLimit ||
            R[peaks_to_change[i]] + s*this->Rflag[i] < this->RBase)
@@ -323,50 +430,113 @@ void DF::changeSlopes() {
             this->Rflag[i] *= -1;
         }
         R[peaks_to_change[i]] += this->Rflag[i]*s;
-        this->Yslope[i] = logisticsFunction(this->Ar, this->Yslope[i]);
+        this->Yslope[i] = logisticsFunction(A, this->Yslope[i]);
     }
 }
 
-// TODO: heights might change if peaks go "out-of-bounds"
-void DF::changeX() {
+// TODO: optimas might change if peaks go "out-of-bounds"
+void DF::changeX(double A, double scale) {
     for(unsigned int i = 0; i < this->dynamic_peaks; ++i) {
         double s = waveStep(this->X[this->peaks_to_change[i]],
                             this->XBase,
                             this->XLimit,
                             this->Yx[i],
-                            this->scaleX);
+                            scale);
 
         if(X[peaks_to_change[i]] + s*this->Xflag[i] > this->XLimit ||
            X[peaks_to_change[i]] + s*this->Xflag[i] < this->XBase) {
             this->Xflag[i] *= -1;
         }
         X[peaks_to_change[i]] += this->Xflag[i]*s;
-        this->Yx[i] = logisticsFunction(this->Ax, this->Yx[i]);
+        this->Yx[i] = logisticsFunction(A, this->Yx[i]);
     }
 }
 
-// TODO: heights might change if peaks go "out-of-bounds"
-void DF::changeY() {
+// TODO: optimas might change if peaks go "out-of-bounds"
+void DF::changeY(double A, double scale) {
     for(unsigned int i = 0; i < this->dynamic_peaks; ++i) {
         double s = waveStep(this->Y[this->peaks_to_change[i]],
                             this->YBase,
                             this->YLimit,
                             this->Yy[i],
-                            this->scaleY);
+                            scale);
 
         if(Y[peaks_to_change[i]] + s*this->Yflag[i] > this->YLimit ||
            Y[peaks_to_change[i]] + s*this->Yflag[i] < this->YBase) {
             this->Yflag[i] *= -1;
         }
         Y[peaks_to_change[i]] += this->Yflag[i]*s;
-        this->Yy[i] = logisticsFunction(this->Ay, this->Yy[i]);
+        this->Yy[i] = logisticsFunction(A, this->Yy[i]);
     }
 }
 
-void DF::dynamic_rotation() {
-    this->changeX();
-    this->changeY();
+void DF::fast_rotation() {
+    this->changeX(this->Ax_fast, this->scaleX_fast);
+    this->changeY(this->Ay_fast, this->scaleY_fast);
 }
+
+void DF::slow_rotation() {
+    this->changeX(this->Ax_slow, this->scaleX_slow);
+    this->changeY(this->Ay_slow, this->scaleY_slow);
+}
+
+void DF::hybrid_rotation() {
+    // TODO: code duplication
+    double s;
+    for(unsigned int i = 0; i < fast_peaks_to_change.size(); ++i) {
+        // X
+        s = waveStep(this->X[this->fast_peaks_to_change[i]],
+                     this->XBase,
+                     this->XLimit,
+                     this->Yx[i],
+                     this->scaleX_fast);
+        if(X[fast_peaks_to_change[i]] + s*this->Xflag[i] > this->XLimit ||
+           X[fast_peaks_to_change[i]] + s*this->Xflag[i] < this->XBase) {
+           this->Xflag[i] *= -1;
+        }
+        X[fast_peaks_to_change[i]] += this->Xflag[i]*s;
+        this->Yx[i] = logisticsFunction(Ax_fast, this->Yx[i]);            
+        // Y
+        s = waveStep(this->Y[this->fast_peaks_to_change[i]],
+                     this->YBase,
+                     this->YLimit,
+                     this->Yy[i],
+                     this->scaleY_fast);
+        if(Y[fast_peaks_to_change[i]] + s*this->Yflag[i] > this->YLimit ||
+           Y[fast_peaks_to_change[i]] + s*this->Yflag[i] < this->YBase) {
+           this->Yflag[i] *= -1;
+        }
+        Y[fast_peaks_to_change[i]] += this->Yflag[i]*s;
+        this->Yy[i] = logisticsFunction(Ay_fast, this->Yy[i]);
+    }
+    for(unsigned int i = 0; i < slow_peaks_to_change.size(); ++i) {
+        // X
+        s = waveStep(this->X[this->slow_peaks_to_change[i]],
+                             this->XBase,
+                             this->XLimit,
+                             this->Yx[i],
+                             this->scaleX_slow);
+        if(X[slow_peaks_to_change[i]] + s*this->Xflag[i] > this->XLimit ||
+           X[slow_peaks_to_change[i]] + s*this->Yflag[i] < this->XBase) {
+           this->Xflag[i] *= -1;
+        }
+        X[slow_peaks_to_change[i]] += this->Xflag[i]*s;
+        this->Yx[i] = logisticsFunction(Ax_slow, this->Yx[i]);
+        // Y
+        s = waveStep(this->Y[this->slow_peaks_to_change[i]],
+                     this->YBase,
+                     this->YLimit,
+                     this->Yy[i],
+                     this->scaleY_slow);
+        if(Y[slow_peaks_to_change[i]] + s*this->Yflag[i] > this->YLimit ||
+           Y[slow_peaks_to_change[i]] + s*this->Yflag[i] < this->YBase) {
+            this->Yflag[i] *= -1;
+        }
+        Y[slow_peaks_to_change[i]] += this->Yflag[i]*s;
+        this->Yy[i] = logisticsFunction(Ay_slow, this->Yy[i]);
+    }
+}
+
 
 void DF::dynamic_scaling() {
     // TODO: scale ALL the peaks
@@ -388,8 +558,9 @@ void DF::dynamic_downgrade_optima() {
 
 // TODO: make the experiment work in more than 2 dimensions
 double DF::evaluateFunction(const std::vector<double>& v) {
-    //double res = -std::numeric_limits<double>::max();
-    double res = 0; // this will force the landscape to have a flat "bottom"
+    // The AEON framework try to maximizes the fitness function.
+    double res = this->bottom; // this will force the landscape to have a flat "bottom"
+    unsigned int peak = -1;
     for (unsigned int i = 0; i < this->N; ++i) {
         double form = ((v[0]-this->X[i])*(v[0]-this->X[i])+(v[1]-this->Y[i])*(v[1]-this->Y[i]));
         if(this->cones) {
@@ -398,10 +569,18 @@ double DF::evaluateFunction(const std::vector<double>& v) {
         double aux = H[i]-R[i]*form;
         if(aux > res) {
             res = aux;
+            peak = i;
         }
     }
+    // checking if this solution is on a peak (global optima)
+    if(peak < this->N - this->local_optimas) {
+        this->solutions_on_peaks += 1;
+        this->covered_peaks[peak] = true;
+    }
+    this->pop_size += 1;
     return res;
 }
+
 
 // The next functions are used only for debugging purposes
 
@@ -422,8 +601,11 @@ void DF::printOptimum() {
 }
 
 // this method can be used to plot the severity of the change
-double DF::getFirstChanged() {
-    return this->H[peaks_to_change[0]];
+void DF::getFirstChanged() {
+    // take care if we use peaks_to_change or slow_peaks_to_change
+    std::ofstream file("severity", ios::app);
+    file << X[peaks_to_change[0]] << std::endl;
+    file.close();
 }
 
 void DF::reportLandscape(int time) {
@@ -443,4 +625,5 @@ void DF::reportLandscape(int time) {
         }
     }
     file.close();
+    //this->getFirstChanged();
 }

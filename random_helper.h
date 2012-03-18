@@ -23,4 +23,6 @@ double random_double_exclusive(double min, double max)
     return res;
 }
 
+// TODO: http://www.cplusplus.com/reference/algorithm/random_shuffle/
+
 #endif // RANDOM_HELPER_H_
