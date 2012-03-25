@@ -350,10 +350,10 @@ bool DF::init(unsigned int, const std::string&, const std::string&) {
             }
             
             // we use 0.45 as the starting Y value for the logistics function
-            this->Yheight.push_back(0.45);
-            this->Yslope.push_back(0.45);
-            this->Yx.push_back(0.45);
-            this->Yy.push_back(0.45);
+            this->Yheight.push_back(0.1);
+            this->Yslope.push_back(0.1);
+            this->Yx.push_back(0.1);
+            this->Yy.push_back(0.1);
             
             this->Hflag.push_back(1);
             this->Rflag.push_back(1);
@@ -364,10 +364,10 @@ bool DF::init(unsigned int, const std::string&, const std::string&) {
         if(this->dynamic_peaks > 0) {
             for(i=0; i < this->dynamic_peaks; ++i) {
                 this->peaks_to_change.push_back(i);
-                this->Yheight.push_back(0.45);
-                this->Yslope.push_back(0.45);
-                this->Yx.push_back(0.45);
-                this->Yy.push_back(0.45);
+                this->Yheight.push_back(random_double(0,1));
+                this->Yslope.push_back(random_double(0,1));
+                this->Yx.push_back(random_double(0,1));
+                this->Yy.push_back(random_double(0,1));
                 this->Hflag.push_back(1);
                 this->Rflag.push_back(1);
                 this->Xflag.push_back(1);
@@ -442,7 +442,6 @@ void DF::changeX(double A, double scale) {
                             this->XLimit,
                             this->Yx[i],
                             scale);
-
         if(X[peaks_to_change[i]] + s*this->Xflag[i] > this->XLimit ||
            X[peaks_to_change[i]] + s*this->Xflag[i] < this->XBase) {
             this->Xflag[i] *= -1;
