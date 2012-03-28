@@ -62,7 +62,8 @@ bool DF::getResults(std::vector<boost::shared_ptr<const Result> >& results) {
 }
 
 void DF::setup(int evolutionaryTime, aeon::EvolutionaryTimeType::Value, int) {
-    if(evolutionaryTime > this->generation) { 
+    if(evolutionaryTime > this->generation) {
+    	//this->printPosition();
         if(this->dynamic_peaks > 0 && evolutionaryTime % this->frequency == 0) {
             if(this->dynamic_type == "slow_rotation") {
                 this->slow_rotation();
@@ -599,13 +600,19 @@ void DF::printOptimum() {
               << this->Y[index] << std::endl;
 }
 
-// this method can be used to plot the severity of the change
-void DF::getFirstChanged() {
-    // take care if we use peaks_to_change or slow_peaks_to_change
-    std::ofstream file("severity", ios::app);
-    file << X[peaks_to_change[0]] << std::endl;
-    file.close();
+void DF::printPosition() {
+	std::ofstream file("severity", ios::app);
+	file << this->X[this->peaks_to_change[0]] << " " << this->Y[this->peaks_to_change[0]] << std::endl;
+	file.close();
 }
+
+// this method can be used to plot the severity of the change
+//void DF::getFirstChanged() {
+//    // take care if we use peaks_to_change or slow_peaks_to_change
+//    std::ofstream file("severity", ios::app);
+//    file << X[peaks_to_change[0]] << std::endl;
+//    file.close();
+//}
 
 void DF::reportLandscape(int time) {
     std::stringstream s;

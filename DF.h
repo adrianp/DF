@@ -115,9 +115,10 @@ class DF : public virtual aeon::IParametricExperiment {
         void dynamic_downgrade_optima();
 
         // the next functions are used only for debugging purposes
-        void getFirstChanged();
+        //void getFirstChanged();
         void printOptimum();
         void reportLandscape(int generation);
+        void printPosition();
         
         // elements used for reporting statistics
         void report_statistics();
