@@ -1,11 +1,11 @@
-# EDIT this file only where indicated by the [EDIT] tag
+# cmake -DCMAKE_BUILD_TYPE=Release -DAEON_INCLUDE_DIR=../../src/ -DAEON_BUILD_DIR=../../build/ ../src
 
 # CMake Required Version
 cmake_minimum_required (VERSION 2.6)
 
 # Project Name [EDIT]
 # The project name must start with AeonExperiment
-project (AeonExperimentDYNAMIC)
+project (AeonExperimentDF)
 
 # Add customized CMAKE modules
 set (CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${AEON_INCLUDE_DIR}/cmake/")
@@ -42,10 +42,11 @@ if (CMAKE_BUILD_TYPE STREQUAL "Release")
        	OptimizeForArchitecture("auto")
 endif ()
 
+
 # Include dependencies
 find_package(Boost 1.47.0)
-include_directories("${AEON_INCLUDE_DIR}/framework/shared/" "${AEON_INCLUDE_DIR}/libraries" ${Boost_INCLUDE_DIRS})
-link_directories("${AEON_BUILD_DIR}/framework" "${AEON_INCLUDE_DIR}/libraries" ${Boost_LIBRARY_DIRS})
+include_directories("${AEON_INCLUDE_DIR}/framework/shared/" "${AEON_INCLUDE_DIR}/libraries/json-cpp/" "${AEON_INCLUDE_DIR}/libraries/utils/" ${Boost_INCLUDE_DIRS})
+link_directories("${AEON_BUILD_DIR}/framework" ${Boost_LIBRARY_DIRS})
 
 # Get the list of all the source code
 file (GLOB_RECURSE
@@ -56,5 +57,5 @@ file (GLOB_RECURSE
 # Create the library 
 # [EDIT] edit the experiment library name "my-experiment"
 # The library name must start with aeon-experiment
-add_library(aeon-experiment-dynamic SHARED ${EXPERIMENT_SRC})
-target_link_libraries(aeon-experiment-dynamic aeon-shared)
+add_library(aeon-experiment-df SHARED ${EXPERIMENT_SRC})
+target_link_libraries(aeon-experiment-df aeon-shared)

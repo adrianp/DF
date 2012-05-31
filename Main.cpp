@@ -3,15 +3,13 @@
 
 extern "C" {
 
-aeon::IExperiment *createExperiment()
-{
-    DF* peaks = new DF();
-    return peaks;
+aeon::IExperiment *createExperiment() {
+	DF* peaks = new DF();
+	return peaks;
 }
 
-void freeExperiment(aeon::IExperiment *experiment)
-{
-    delete experiment;
+void freeExperiment(aeon::IExperiment *experiment) {
+	delete experiment;
 }
 
 }
