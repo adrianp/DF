@@ -387,9 +387,6 @@ private:
 	void report_statistics();
 
 
-
-
-
 public:
 
 	/**
