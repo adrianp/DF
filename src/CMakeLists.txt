@@ -44,6 +44,7 @@ endif ()
 
 
 # Include dependencies
+#set (BOOST_ROOT "/home/adrian/lib/boost_1_48_0")
 find_package(Boost 1.47.0)
 include_directories("${AEON_INCLUDE_DIR}/framework/shared/" "${AEON_INCLUDE_DIR}/libraries/json-cpp/" "${AEON_INCLUDE_DIR}/libraries/utils/" ${Boost_INCLUDE_DIRS})
 link_directories("${AEON_BUILD_DIR}/framework" ${Boost_LIBRARY_DIRS})
