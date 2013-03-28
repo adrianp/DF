@@ -3,7 +3,8 @@
  * generators presented in the paper: A Test Problem Generator for 
  * Non-Stationary Environments, Morrison, R., W., De Jong, K., A, 1999 IEEE.
  * 
- * This is implemented as an experiment for the AEON framework.
+ * This is implemented as an experiment for the AEON framework:
+ * http://sourceforge.net/projects/aeon-framework/
  * 
  * Author: Adrian Tudor Panescu, adrian.panescu@epfl.ch
  */
